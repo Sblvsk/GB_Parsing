@@ -5,6 +5,15 @@ from pprint import pprint
 import json
 import pandas as pd
 import openpyxl
+import pymongo
+from pymongo import MongoClient
+from pymongo import errors
+
+
+client = MongoClient('127.0.0.1', 27017)
+db = client['hh']
+vacantions = db.vacantions
+
 
 
 def processing_salary(value):
@@ -32,7 +41,7 @@ def processing_salary(value):
 
 headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36'}
 url = "https://samara.hh.ru/search/vacancy?&from=suggest_post&fromSearchLine=true&area=78"
-params = {'text': "python"}
+params = {'text': "python", "items_on_page": '20'}
 
 session = requests.Session()
 response = session.get(url, headers=headers, params=params)
@@ -45,6 +54,7 @@ tags_list = []
 
 i = 0
 while tags:
+
     if not i:
         pass
     else:
@@ -52,7 +62,8 @@ while tags:
         response = session.get(url, params=params, headers=headers)
         dom = BeautifulSoup(response.text, 'html.parser')
         tags = dom.find_all('div', {'class': 'vacancy-serp-item-body__main-info'})
-
+    if not response.ok:
+        break
     for tag in tags:
         tags_data = {}
         name = tag.find('a', {'data-qa': 'vacancy-serp__vacancy-title'})
@@ -63,16 +74,21 @@ while tags:
         tags_data['href'] = href
         tags_data['salary'] = processing_salary(salary)
         tags_data['url'] = 'https://hh.ru'
-
         tags_list.append(tags_data)
+
+        for item in vacantions.find({}):
+            if tags_data["href"] == item["href"]:
+                i += 1
+                continue
+
+        vacantions.insert_one(tags_data)
 
     i += 1
 
 pprint(tags_list)
 
-with open('end.json', 'w', encoding='windows-1251') as f:
-    json.dump(tags_list, f)
-    # не смог разобраться в кодироке, подскажите как избежать пжлст, гугл не помог
+with open('end.json', 'w', encoding='UTF-8') as f:
+    json.dump(tags_list, f, ensure_ascii=False)
 
 
 #вместо csv созранил в эксель
@@ -82,3 +98,6 @@ writer = pd.ExcelWriter('End.xlsx')
 frame.to_excel(writer)
 writer.save()
 
+
+
+client.close()
