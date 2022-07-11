@@ -14,6 +14,9 @@ client = MongoClient('127.0.0.1', 27017)
 db = client['hh']
 vacantions = db.vacantions
 
+vacantions_href = [i['href'] for i in vacantions.find({})]
+
+
 
 
 def processing_salary(value):
@@ -76,28 +79,36 @@ while tags:
         tags_data['url'] = 'https://hh.ru'
         tags_list.append(tags_data)
 
-        for item in vacantions.find({}):
-            if tags_data["href"] == item["href"]:
-                i += 1
-                continue
+        # for item in vacantions.find({}):
+        #     if tags_data["href"] == item["href"]:
+        #         i += 1
+        #         continue
+
+        #Доработка 1 (если всё верно понял)
+        if tags_data['href'] in vacantions_href:
+            continue
 
         vacantions.insert_one(tags_data)
 
     i += 1
 
-pprint(tags_list)
-
-with open('end.json', 'w', encoding='UTF-8') as f:
-    json.dump(tags_list, f, ensure_ascii=False)
-
-
-#вместо csv созранил в эксель
-frame = pd.DataFrame(tags_list)
-print(frame)
-writer = pd.ExcelWriter('End.xlsx')
-frame.to_excel(writer)
-writer.save()
-
-
+# pprint(tags_list)
 
 client.close()
+
+
+
+
+# Доработка 2 не удалась, пытался изначальный словарь salary преобразовать в список; искать с помощью$gt и $or, не вышло
+# def find_salary(value):
+#     value = int(value)
+#     end_data = []
+#
+#     for i in vacantions.find({}):
+#         pass
+#
+#
+#     return end_data
+
+#
+# print(find_salary(10000))
